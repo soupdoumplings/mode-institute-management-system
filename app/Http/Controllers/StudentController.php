@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreStudentRequest;
-use App\Http\Requests\UpdateStudentRequest;
 use App\Models\Student;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class StudentController extends Controller
@@ -15,9 +15,7 @@ class StudentController extends Controller
      */
     public function index(): View
     {
-        return view('students.index', [
-            'students' => Student::query()->latest()->paginate(8),
-        ]);
+        return view('student.list', ['students' => Student::all()]);
     }
 
     /**
@@ -25,18 +23,18 @@ class StudentController extends Controller
      */
     public function create(): View
     {
-        return view('students.create');
+        return view('student.create');
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreStudentRequest $request): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        $student = Student::create($request->validated());
+        $student = Student::create($request->validate($this->rules()));
 
-        return to_route('students.show', $student)
-            ->with('success', "{$student->name} has been added to the register.");
+        return to_route('students.index')
+            ->with('success', "Student {$student->name} created successfully!");
     }
 
     /**
@@ -44,7 +42,7 @@ class StudentController extends Controller
      */
     public function show(Student $student): View
     {
-        return view('students.show', compact('student'));
+        return view('student.detail', compact('student'));
     }
 
     /**
@@ -52,18 +50,18 @@ class StudentController extends Controller
      */
     public function edit(Student $student): View
     {
-        return view('students.edit', compact('student'));
+        return view('student.edit', compact('student'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateStudentRequest $request, Student $student): RedirectResponse
+    public function update(Request $request, Student $student): RedirectResponse
     {
-        $student->update($request->validated());
+        $student->update($request->validate($this->rules($student)));
 
         return to_route('students.show', $student)
-            ->with('success', "{$student->name}'s profile has been updated.");
+            ->with('success', 'Student updated successfully!');
     }
 
     /**
@@ -71,10 +69,20 @@ class StudentController extends Controller
      */
     public function destroy(Student $student): RedirectResponse
     {
-        $studentName = $student->name;
         $student->delete();
 
         return to_route('students.index')
-            ->with('success', "{$studentName} has been removed from the register.");
+            ->with('success', 'Student deleted successfully!');
+    }
+
+    private function rules(?Student $student = null): array
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'email', 'max:255', Rule::unique('students')->ignore($student?->id)],
+            'phone' => 'required|string|max:20',
+            'address' => 'nullable|string|max:500',
+            'date_of_birth' => 'nullable|date',
+        ];
     }
 }

@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreCourseRequest;
-use App\Http\Requests\UpdateCourseRequest;
 use App\Models\Course;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class CourseController extends Controller
@@ -15,9 +15,7 @@ class CourseController extends Controller
      */
     public function index(): View
     {
-        return view('courses.index', [
-            'courses' => Course::query()->latest()->paginate(8),
-        ]);
+        return view('course.list', ['courses' => Course::all()]);
     }
 
     /**
@@ -25,18 +23,18 @@ class CourseController extends Controller
      */
     public function create(): View
     {
-        return view('courses.create');
+        return view('course.create');
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreCourseRequest $request): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        $course = Course::create($request->validated());
+        $course = Course::create($request->validate($this->rules()));
 
-        return to_route('courses.show', $course)
-            ->with('success', "{$course->name} is now in the course edit.");
+        return to_route('courses.index')
+            ->with('success', "Course {$course->name} created successfully!");
     }
 
     /**
@@ -44,7 +42,7 @@ class CourseController extends Controller
      */
     public function show(Course $course): View
     {
-        return view('courses.show', compact('course'));
+        return view('course.detail', compact('course'));
     }
 
     /**
@@ -52,15 +50,15 @@ class CourseController extends Controller
      */
     public function edit(Course $course): View
     {
-        return view('courses.edit', compact('course'));
+        return view('course.edit', compact('course'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateCourseRequest $request, Course $course): RedirectResponse
+    public function update(Request $request, Course $course): RedirectResponse
     {
-        $course->update($request->validated());
+        $course->update($request->validate($this->rules()));
 
         return to_route('courses.show', $course)
             ->with('success', "{$course->name} has been updated.");
@@ -71,10 +69,21 @@ class CourseController extends Controller
      */
     public function destroy(Course $course): RedirectResponse
     {
-        $courseName = $course->name;
         $course->delete();
 
         return to_route('courses.index')
-            ->with('success', "{$courseName} has been removed from the course edit.");
+            ->with('success', 'Course deleted successfully!');
+    }
+
+    private function rules(): array
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'duration' => 'required|integer|min:1',
+            'fee' => 'required|numeric|min:0',
+            'difficulty' => ['required', Rule::in(['Easy', 'Medium', 'Hard'])],
+            'is_active' => 'boolean',
+        ];
     }
 }
